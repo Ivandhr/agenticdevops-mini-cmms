@@ -8,6 +8,8 @@
 
 **Runtime: Node 22 (LTS) + Python 3.12.** These are the versions specified by the human lead as the local/target toolchain, and CI pins them exactly. **Keep CI matching the version the human actually runs** — the workflow that produced Rule 19 / DEC-003 was CI drifting off the correct runtime for several round-trips. When the local toolchain moves, this pin moves in the same change, and the reason is recorded here.
 
+**Runner OS: `windows-latest`, both jobs.** Same principle as the runtime pins — Windows is the confirmed ground truth for this project, so CI runs where the human runs. Windows is also where the platform-specific traps live (path separators, `.venv\Scripts\activate`, `localhost` resolving to `::1` while uvicorn binds IPv4); a Linux runner would pass straight over them. Recorded in T-002.
+
 Two toolchains run (the split-service topology, DEC-004): a Python job for the FastAPI backend and a Node job for the Electron/React renderer.
 
 | Step | Command | Fails the build? |
@@ -59,4 +61,7 @@ If tempted to give CI write access "just to auto-fix the generated pages," don't
 
 ## First green build
 
-CI cannot pass until the product is scaffolded — there is no `package.json`, `requirements.txt`, or test yet. Task **T-001 (repo scaffold + green CI)** creates the minimum on both sides (a buildable renderer skeleton, a FastAPI skeleton, and one trivial passing test each) so every step above has something real to run. Until T-001 merges, treat this runbook as the target, not the current state.
+The scaffold arrived in two slices, not one:
+
+- **T-001 (backend skeleton)** shipped the Python side — `backend/requirements.txt`, the FastAPI app with `GET /health`, and one passing pytest. It created no `package.json` and no workflow file, so CI did not yet exist and the commit went direct to `main`.
+- **T-002 (renderer scaffold + green CI)** shipped the Node side — `package.json` with a committed `package-lock.json`, the Electron/Vite/React/TypeScript skeleton, one passing vitest — **and `.github/workflows/ci.yml` itself**. This is the task where every step in the table above first has something real to run, and the first task gated by a pull request.

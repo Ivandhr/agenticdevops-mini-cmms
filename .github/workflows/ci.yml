@@ -1,0 +1,68 @@
+name: CI
+
+# The pipeline is a checker, not a writer — no write token is ever requested.
+# See docs/devops_pipeline.md for what each guard protects and the soft/hard split.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Python 3.12)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      # Soft: reports without failing the build. Promotion criterion lives in
+      # docs/devops_pipeline.md — do not drop continue-on-error to promote by accident.
+      - name: Lint (ruff)
+        run: ruff check .
+        continue-on-error: true
+
+      - name: Typecheck (mypy)
+        run: mypy .
+        continue-on-error: true
+
+      - name: Test (pytest)
+        run: pytest
+
+  renderer:
+    name: Renderer (Node 22)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Test (vitest)
+        run: npm test
+
+      # No Electron launch, no packaging step: Electron needs a display, and
+      # packaging is docs/packaging.md's area (unwritten).

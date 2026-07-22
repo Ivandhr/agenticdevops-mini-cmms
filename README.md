@@ -21,21 +21,35 @@ The renderer talks to the backend over HTTP (localhost) and holds no business lo
 
 ## Status
 
-**v1, in setup.** The workflow and architecture are established; the product itself is not yet scaffolded. The first task (T-001) stands up the renderer and backend skeletons with a green CI pipeline. Build/dev/release commands below become live once T-001 lands.
+**v1, scaffolded.** The workflow and architecture are established. T-001 stood up the FastAPI backend skeleton; T-002 added the Electron/React/TypeScript renderer and the CI pipeline. The app currently has one view: it reports backend health. Domain surface starts arriving with the next tasks.
 
-## Build & run
+## Running locally
+
+The backend and the renderer are **separate services** — start the backend first, then the app.
+
+**1. Backend** (from `backend/`, Python 3.12):
 
 ```
-# Backend
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-
-# Renderer (Electron + Vite)
-npm install
-npm run dev        # develop
-npm run build      # build renderer + main
-npm run make       # per-OS installers (electron-forge)
 ```
+
+It serves on `http://127.0.0.1:8000`. Check it with `http://127.0.0.1:8000/health`, which answers `{"status": "ok"}`.
+
+**2. App** (from the repo root, Node 22):
+
+```
+npm install
+npm run dev
+```
+
+This starts the Vite dev server and opens the Electron window.
+
+**The backend must be running for the health view to report healthy.** If it isn't, the window shows a "Backend unreachable" state rather than failing silently — that is expected, not a crash.
+
+Other root-level commands: `npm run build` (renderer + main), `npm run typecheck`, `npm run lint`, `npm test`. Packaging (per-OS installers) is not wired up yet.
 
 ## How this project is developed
 
