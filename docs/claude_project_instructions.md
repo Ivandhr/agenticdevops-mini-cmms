@@ -42,7 +42,7 @@ Read the relevant doc **before** advising on or implementing anything in its are
 - `docs/architecture-facts.md` — the Key Architecture Facts (Layer B2). The hard technical constraints every spec enforces.
 - `docs/functional-spec.md` — the enumerated v1/MVP behavior (FR-001–FR-063). Every spec cites the FR ids it satisfies in its Acceptance Criteria.
 
-**Tier 2 — read when working in that area:** `docs/design-guide.md` (UI/UX + visual design — to author) · `docs/data-model.md` (asset / work-order / downtime schema — to author) · `docs/api-contract.md` (renderer↔backend REST API surface — to author) · `docs/uns-contract.md` (UNS topic structure + MQTT surface — to author) · `docs/packaging.md` (electron-forge build/release + native-module rebuilds — to author). See the authority-docs-by-area index.
+**Tier 2 — read when working in that area:** `docs/design-guide.md` (UI/UX + visual design — to author) · `docs/data-model.md` (asset / work-order / downtime schema — live) · `docs/api-contract.md` (renderer↔backend REST API surface — to author) · `docs/uns-contract.md` (UNS topic structure + MQTT surface — to author) · `docs/packaging.md` (electron-forge build/release + native-module rebuilds — to author). See the authority-docs-by-area index.
 
 ## 6. The non-negotiable rules
 
