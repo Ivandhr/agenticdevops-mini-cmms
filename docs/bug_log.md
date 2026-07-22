@@ -42,11 +42,18 @@ constraint, which is the correct behavior.
 decision." No such decision was made or communicated — the PM first learned of the
 gap by reading that commit message. Recorded so the trail is accurate.
 
-**Fix:** pending — see the sequencing decision in `docs/agent_handoff.md`. Requires a
-backend `CORSMiddleware` with an **explicit origin allowlist**. A wildcard
-(`allow_origins=["*"]`) must not be combined with credentials once auth lands
-(DEC-005), and the packaged-app `Origin: null` case needs a deliberate answer rather
-than allowlisting the literal string `"null"`.
+**Fix:** in progress on the T-002 branch. Senior Architect decided (2026-07-22) to
+fix before merge rather than in a follow-up, since T-002's purpose is proving the
+boundary and merging a provably broken one would put a false "verified" in the
+close-out. `docs/tasks/task_T-002_renderer-scaffold-ci.md` § 3.4 amends the spec to
+permit exactly one backend change: `CORSMiddleware` with an allowlist of exactly
+`http://127.0.0.1:5173`, plus a test asserting the `Access-Control-Allow-Origin`
+header. **No wildcard** — auth lands next (DEC-005) and wildcard-plus-credentials is
+a real vulnerability. **The literal `"null"` origin is deliberately not allowlisted**;
+the packaged `file://` case is out of scope here and is recorded as a blocker in
+`checklists/packaging-preflight.checklist.md`, which is where it will be read at the
+moment it matters. Flip this entry to Fixed only after the human confirms the
+renderer shows the **healthy** state against a running backend.
 
 **Trap:** TRAP-001.
 

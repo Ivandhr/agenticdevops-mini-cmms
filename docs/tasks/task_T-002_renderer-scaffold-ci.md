@@ -46,6 +46,15 @@ Also already present — **edit, do not recreate**:
 **Do not modify:** anything under `docs/` other than the two files named above,
 anything under `checklists/`, `CLAUDE.md`, or `.cursor/`.
 
+> **AMENDMENT 2026-07-22 — the original "no backend changes" constraint is
+> relaxed, for CORS only.** The first version of this spec required the renderer to
+> display live backend health while forbidding any backend change. Those two
+> constraints cannot both hold: the renderer's page origin differs from the
+> backend's, so the browser blocks the read without a backend-side CORS allowlist.
+> That was a spec defect, logged as **BUG-001** with **TRAP-001**. § 3.4 below is the
+> permitted backend change. **It is the only one** — everything else under
+> `backend/` remains off-limits.
+
 **Does not exist yet:** `package.json`, any renderer or Electron source, any
 TypeScript config, any CI workflow. This task creates them.
 
@@ -117,7 +126,48 @@ TypeScript config, any CI workflow. This task creates them.
    runtime test** (Acceptance Criteria), and an automated integration test against a
    running backend is a named follow-up for the first task with real domain surface.
 
-### 3.4 CI
+### 3.4 Backend CORS — the one permitted backend change (BUG-001)
+
+The renderer's page and the backend are different origins: in dev the page is served
+from `http://127.0.0.1:5173` and the backend is `http://127.0.0.1:8000`. Chromium
+blocks the cross-origin read unless the backend says otherwise, and because
+`readHealth()` correctly collapses every failure into `unreachable`, the symptom is
+the app reporting a dead backend while the backend is running fine (TRAP-001).
+
+Add to `backend/app/main.py`:
+
+- **`CORSMiddleware` with an explicit origin allowlist containing exactly one entry:
+  `http://127.0.0.1:5173`.**
+- **No wildcard.** `allow_origins=["*"]` is forbidden — not as style, but because
+  auth lands next (DEC-005) and a wildcard combined with credentials is a real
+  vulnerability. Establish the tight allowlist now, while it costs nothing.
+- **Do not allowlist the literal `"null"` origin.** The packaged app loads over
+  `file://` and sends `Origin: null`, but `"null"` is not a real origin — sandboxed
+  iframes send it too, making it a permanently loose entry. **The packaged app is
+  deliberately out of scope for this task** and is recorded as a packaging blocker
+  (§ 3.5). Dev is what this task makes work.
+- Restrict `allow_methods` and `allow_headers` to what is actually needed rather
+  than `["*"]`.
+
+**Plus a backend test** asserting that a `GET /health` request carrying
+`Origin: http://127.0.0.1:5173` comes back with a matching
+`Access-Control-Allow-Origin` header.
+
+> Note what that test does *and does not* prove. It shows the backend **emits** the
+> right header; it cannot show the browser **accepts** it, because `TestClient` calls
+> the ASGI app in-process where no browser exists. The boundary is proven by the
+> human runtime test in § 4 — this test only stops the middleware from being silently
+> removed or misconfigured later.
+
+### 3.5 Record the packaged-app origin as a packaging blocker
+
+**`checklists/packaging-preflight.checklist.md`** — add a line recording that the
+packaged app loads from `file://`, sends `Origin: null`, and will therefore **fail to
+reach its own backend** until packaging decides how the production renderer is
+served (a registered custom scheme giving a real allowlistable origin is the likely
+answer). This must be resolved before the first packaged build is called working.
+
+### 3.6 CI
 
 8. **`.github/workflows/ci.yml`**, matching `docs/devops_pipeline.md`:
 
@@ -184,6 +234,19 @@ Verifiable properties. "From a clean checkout" means a fresh clone with no
       unhandled promise rejection. *(Human runtime test.)*
 - [ ] The response is consumed through the shared `HealthResponse` TypeScript type;
       no inline hand-rolled response shape exists anywhere in the renderer.
+- [ ] **With the backend running, the renderer shows the healthy state — not the
+      unreachable state.** *(BUG-001: this is the criterion CORS exists to make
+      satisfiable. Confirm the **success** path renders; a plausible-looking error
+      state is exactly how TRAP-001 hides. If it reads unreachable, check the
+      devtools network panel, which names a blocked request where the application
+      code cannot.)*
+- [ ] A backend test asserts that `GET /health` with
+      `Origin: http://127.0.0.1:5173` returns a matching
+      `Access-Control-Allow-Origin` header.
+- [ ] The CORS allowlist contains exactly `http://127.0.0.1:5173` — **no wildcard,
+      and not the literal `"null"`**.
+- [ ] `checklists/packaging-preflight.checklist.md` records the packaged-app
+      `Origin: null` gap as a blocker for the first packaged build.
 - [ ] The Electron `BrowserWindow` is created with `contextIsolation: true` and
       `nodeIntegration: false`.
 - [ ] The main process contains no HTTP call to the backend, no IPC channel
@@ -195,7 +258,8 @@ Verifiable properties. "From a clean checkout" means a fresh clone with no
       Python 3.12, declares `contents: read`, and runs all eight steps in the table
       above with `ruff` and `mypy` non-blocking and everything else blocking.
 - [ ] CI is green on the pull request for this task.
-- [ ] No backend source file is modified.
+- [ ] The **only** backend change is the CORS middleware of § 3.4 and its test. No
+      other backend source file is modified, and no endpoint is added or altered.
 - [ ] No file outside the Files to Modify list is created or changed.
 
 ## 5. Files to Modify
@@ -223,9 +287,14 @@ Verifiable properties. "From a clean checkout" means a fresh clone with no
 - `docs/devops_pipeline.md` — § First green build correction + runner-OS record
 - `README.md` — "Running locally" section
 - `.gitignore` — only if something genuinely new needs ignoring
+- **`backend/app/main.py` — CORS middleware only (§ 3.4, BUG-001)**
+- **`backend/tests/test_health.py`** (or a new backend test module) — the
+  `Access-Control-Allow-Origin` assertion
+- **`checklists/packaging-preflight.checklist.md`** — the packaged-app origin
+  blocker (§ 3.5)
 
-**Explicitly not touched:** anything under `backend/`, anything else under `docs/`,
-anything under `checklists/`, `CLAUDE.md`, `.cursor/`.
+**Explicitly not touched:** anything under `backend/` other than the two files named
+above, anything else under `docs/`, any other checklist, `CLAUDE.md`, `.cursor/`.
 
 The exact renderer/main directory layout is the agent's call, provided it is
 conventional for Electron + Vite and the split between main and renderer is
@@ -262,7 +331,13 @@ Hard constraints decided by this spec — do not re-decide these:
 - **Soft CI steps stay soft.** `ruff` and `mypy` report without failing the build.
   Do not promote them; do not drop the flag that makes them non-blocking.
 - **No Electron launch, packaging, or `npm run make` step in CI.**
-- **Do not modify anything under `backend/`.**
+- **Backend changes are limited to CORS (§ 3.4).** Add `CORSMiddleware` to
+  `backend/app/main.py` with an allowlist of exactly `http://127.0.0.1:5173`, plus a
+  test asserting the `Access-Control-Allow-Origin` header. **No wildcard origin** —
+  auth lands next (DEC-005) and wildcard-plus-credentials is a real vulnerability.
+  **Do not allowlist `"null"`** for the packaged `file://` case; record it as a
+  packaging blocker instead (§ 3.5). Touch no other backend file and add no
+  endpoint.
 - **Contract-sync (Rule 12), same commit:** the TypeScript `HealthResponse` type
   **+** `docs/api-contract.md`. The Pydantic side already exists and does not
   change.
