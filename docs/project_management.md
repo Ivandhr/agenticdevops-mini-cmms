@@ -31,6 +31,7 @@ SQLite and Postgres; never read/write/delete data outside the app's own store."
 |---|---|---|---|
 | ✅ | T-001 | Backend skeleton — FastAPI /health + tooling | 2026-07-22 |
 | 🔴 | T-002 | Renderer scaffold — Electron/React/TS + green CI | |
+| 🔴 | T-003 | Persistence foundation — models + dual-engine Alembic | |
 
 ## Queued / not-yet-specced items
 
@@ -46,12 +47,12 @@ extrapolated from the original scaffold split. Two authority docs gate most of i
 - **`docs/design-guide.md` *(to author — decision pending)*** — gates the first real
   UI task.
 
-Candidate task shape after T-002, in dependency order — **not yet specced**:
-persistence foundation (SQLAlchemy + Alembic, dual-engine) → auth and roles
-(FR-001–FR-005, including operator account provisioning) → downtime events with the
-manual ingress path (FR-021–FR-027) → work-order seeding through the single seeding
-path with the duration gate (FR-030–FR-036) → UNS/MQTT discovery (FR-010–FR-014,
-FR-020) → planning and execution (FR-040–FR-052) → views (FR-060–FR-063).
+Candidate task shape after T-003, in dependency order — **not yet specced**: auth
+and roles (FR-001–FR-005, including operator account provisioning) → downtime events
+with the manual ingress path (FR-021–FR-027) → work-order seeding through the single
+seeding path with the duration gate (FR-030–FR-036) → UNS/MQTT discovery
+(FR-010–FR-014, FR-020) → planning and execution (FR-040–FR-052) → views
+(FR-060–FR-063).
 
 Sequencing note: the manual ingress path is specced to work with no broker
 (FR-021), so it can land and be runtime-tested before the MQTT leg exists — which
