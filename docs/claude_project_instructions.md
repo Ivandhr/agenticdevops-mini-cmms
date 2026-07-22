@@ -13,7 +13,7 @@ This orients agents to the project. It holds the **stable** things — roles, ru
 CMMess is a reactive CMMS (computerized maintenance management system) for facility maintenance teams — Users (technicians/engineers) and Planners (managers) — working from a single shared instance with role-based access. Its distinctive move is that downtime *drives* the work: a downtime event on any asset seeds a work order that Planners plan/schedule and Users execute, rather than tracking and planning being independent, disconnected capabilities. The asset model is process-agnostic — assets are generic, configurable entities discoverable through a Unified Namespace (UNS), so any industry, plant, or facility onboards without redesigning the data model. v1 is reactive-only but must not preclude adding preventive maintenance later; distribution is open-source under an open license from a closed repo.
 
 **Stack:** Electron + TypeScript + React (renderer); Python 3 / FastAPI backend; SQLite for v1/dev with a clean migration path to Postgres; MQTT client (paho/aiomqtt) for UNS asset discovery; role-based auth (User/Planner).
-**Repository:** `/Users/walkerreynolds/PycharmProjects/agenticdevops-mini-cmms`
+**Repository:** `D:\GitHub\agenticdevops-mini-cmms` (Windows — confirmed ground truth, Rule 19). CI pins `windows-latest` to match; venv activation is `.venv\Scripts\activate`.
 **Build:** `npm run build` (renderer + main); backend deps `pip install -r requirements.txt` · **Dev:** `npm run dev` (Electron + Vite); backend `uvicorn app.main:app --reload` · **Package/release:** `npm run make` (electron-forge, per-OS installers)
 
 ## 3. How this project is developed — four roles

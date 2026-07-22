@@ -30,7 +30,29 @@ SQLite and Postgres; never read/write/delete data outside the app's own store."
 | Status | ID | Title | Verified |
 |---|---|---|---|
 | ✅ | T-001 | Backend skeleton — FastAPI /health + tooling | 2026-07-22 |
+| 🔴 | T-002 | Renderer scaffold — Electron/React/TS + green CI | |
 
 ## Queued / not-yet-specced items
 
-- **T-002 (next): renderer scaffold + green CI** — the remainder of the original repo-scaffold item after T-001 sliced off the backend: stand up `package.json` + the Electron/Vite/TS renderer skeleton with a trivial passing test, plus `ci.yml` so `docs/devops_pipeline.md`'s CI has something real to run on both sides. This is the task that makes Step 4 (CI green) true.
+Re-planned against `docs/functional-spec.md` (approved 2026-07-22) rather than
+extrapolated from the original scaffold split. Two authority docs gate most of it:
+
+- **`docs/data-model.md` *(to author — PM)*** — gates every persistence task. Must
+  cover assets (cache keyed by UNS path), downtime events (with ingress `source`,
+  the at-most-one-open invariant per FR-026), work orders (typed `origin`, the
+  **nullable** downtime-event link per DEC-008), and identities/roles.
+- **`docs/uns-contract.md` *(to author — PM)*** — gates FR-010–FR-014 and FR-020.
+  Topic structure, discovery semantics, and the dev broker with simulated messages.
+- **`docs/design-guide.md` *(to author — decision pending)*** — gates the first real
+  UI task.
+
+Candidate task shape after T-002, in dependency order — **not yet specced**:
+persistence foundation (SQLAlchemy + Alembic, dual-engine) → auth and roles
+(FR-001–FR-005, including operator account provisioning) → downtime events with the
+manual ingress path (FR-021–FR-027) → work-order seeding through the single seeding
+path with the duration gate (FR-030–FR-036) → UNS/MQTT discovery (FR-010–FR-014,
+FR-020) → planning and execution (FR-040–FR-052) → views (FR-060–FR-063).
+
+Sequencing note: the manual ingress path is specced to work with no broker
+(FR-021), so it can land and be runtime-tested before the MQTT leg exists — which
+keeps the UNS work from blocking the first genuinely usable slice.
