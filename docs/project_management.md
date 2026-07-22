@@ -30,18 +30,17 @@ SQLite and Postgres; never read/write/delete data outside the app's own store."
 | Status | ID | Title | Verified |
 |---|---|---|---|
 | ✅ | T-001 | Backend skeleton — FastAPI /health + tooling | 2026-07-22 |
-| 🔴 | T-002 | Renderer scaffold — Electron/React/TS + green CI | |
-| 🔴 | T-003 | Persistence foundation — models + dual-engine Alembic | |
+| ✅ | T-002 | Renderer scaffold — Electron/React/TS + green CI | 2026-07-22 |
+| ✅ | T-003 | Persistence foundation — models + dual-engine Alembic | 2026-07-22 |
 
 ## Queued / not-yet-specced items
 
 Re-planned against `docs/functional-spec.md` (approved 2026-07-22) rather than
 extrapolated from the original scaffold split. Two authority docs gate most of it:
 
-- **`docs/data-model.md` *(to author — PM)*** — gates every persistence task. Must
-  cover assets (cache keyed by UNS path), downtime events (with ingress `source`,
-  the at-most-one-open invariant per FR-026), work orders (typed `origin`, the
-  **nullable** downtime-event link per DEC-008), and identities/roles.
+- ~~**`docs/data-model.md` *(to author — PM)*** — gates every persistence task.~~
+  **Authored 2026-07-22 and implemented by T-003** — live authority for the
+  persisted schema. Read § 1 (engine portability) before any model or migration.
 - **`docs/uns-contract.md` *(to author — PM)*** — gates FR-010–FR-014 and FR-020.
   Topic structure, discovery semantics, and the dev broker with simulated messages.
 - **`docs/design-guide.md` *(to author — decision pending)*** — gates the first real
