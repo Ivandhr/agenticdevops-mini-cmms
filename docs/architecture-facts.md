@@ -23,13 +23,25 @@ resistance topology: a plain REST contract, not a two-hop IPC+HTTP chain.)
 
 ## Canonical data formats
 
-**A work order is seeded from a typed, extensible trigger source.** In v1 the
-sources are: an automated **downtime** trigger detected via the UNS, or **manual**
-creation by a User or Planner. The work order's origin is a first-class typed field
-(e.g. `uns_downtime`, `manual`, with `created_by` recording the actual user) —
-never hardcoded such that a work order *requires* a downtime event. Reactive-only
-v1 must not preclude adding a scheduled/preventive origin later; the origin field is
-that extension point.
+**A work order is seeded from a typed, extensible trigger source, through exactly
+one seeding path.** In v1, downtime reaches the system by two *ingress* routes —
+detected via the UNS, or recorded in the UI by a User or Planner — and both produce
+a downtime event that flows through the same seeding logic. What varies is how the
+event arrived, never how a work order is made. The manual route must work when the
+broker has published nothing for that asset. The work order's origin is a
+first-class typed field (e.g. `uns_downtime`, `manual_downtime`, with `created_by`
+recording the actual user), and **the link from a work order to its originating
+downtime event is nullable** — never a schema constraint that makes a work order
+*require* a downtime event. v1 populates it from both origins and asserts that in
+tests; reactive-only v1 must not preclude adding a scheduled/preventive origin
+later, and a NOT NULL link would turn that additive change into a migration
+relaxing a constraint on live rows. The origin field is the extension point.
+*(DEC-008; behavior enumerated in `docs/functional-spec.md`.)*
+
+**Seeding is gated; recording never is.** A configurable minimum duration
+suppresses the *work order* for a UNS-detected blip — it never suppresses the
+downtime event itself. The event log stays complete so derived asset status and
+downtime history remain honest. Manual events always seed. *(DEC-008.)*
 
 **Every work order ties to a UNS-discoverable asset, regardless of origin.**
 Seeding is not the same as planning: both roles may *create* a work order, but
@@ -81,6 +93,13 @@ test fixtures are touched.
 **Downtime duration and asset up/down status are derived from the authoritative
 event log.** Store timestamped state transitions; compute duration and current
 status from them — never store a duration that can drift from its events.
+
+**An asset has at most one open downtime event.** A stop signal arriving for an
+asset that already has an open event — from either ingress route, in either order —
+attaches to that open event rather than creating a rival, and seeds no additional
+work order. This follows directly from deriving status from the log: two concurrent
+open events on one asset make "is it down, and for how long?" ill-defined.
+*(DEC-008.)*
 
 **The local asset registry is a cache of UNS discovery, not the source of truth.**
 The UNS is authoritative for what assets exist; any persisted asset table is rebuilt
