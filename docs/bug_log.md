@@ -18,7 +18,11 @@ Each bug gets an entry **before** its fix task runs; flip it to Fixed only **aft
 
 ## Active
 
-### BUG-001 — Renderer reports "backend unreachable" while the backend is running   [Active]
+*(none)*
+
+## Fixed
+
+### BUG-001 — Renderer reports "backend unreachable" while the backend is running   [Fixed 2026-07-22]
 
 **Reported:** Flagged by the coding agent in T-002's commit (`1417c5e`) and confirmed
 by PM read-verification of the actual files before merge — not found at runtime,
@@ -27,8 +31,8 @@ because T-002 has not been runtime-tested yet.
 **Root cause:** The renderer fetches `http://127.0.0.1:8000/health` from a page
 served at `http://127.0.0.1:5173` (dev, `loadURL`) or `file://` (packaged,
 `loadFile`). Both are cross-origin — a different port in dev, and `Origin: null`
-from `file://`. `backend/app/main.py` installs no `CORSMiddleware`, so Chromium
-blocks the response. `readHealth()` collapses every failure mode to `unreachable`,
+from `file://`. `backend/app/main.py` installed no `CORSMiddleware`, so Chromium
+blocked the response. `readHealth()` collapses every failure mode to `unreachable`,
 so a CORS rejection is indistinguishable from a dead backend.
 
 **Not a coding-agent error — a spec error.** `docs/tasks/task_T-002_renderer-scaffold-ci.md`
@@ -42,24 +46,30 @@ constraint, which is the correct behavior.
 decision." No such decision was made or communicated — the PM first learned of the
 gap by reading that commit message. Recorded so the trail is accurate.
 
-**Fix:** in progress on the T-002 branch. Senior Architect decided (2026-07-22) to
-fix before merge rather than in a follow-up, since T-002's purpose is proving the
-boundary and merging a provably broken one would put a false "verified" in the
-close-out. `docs/tasks/task_T-002_renderer-scaffold-ci.md` § 3.4 amends the spec to
-permit exactly one backend change: `CORSMiddleware` with an allowlist of exactly
-`http://127.0.0.1:5173`, plus a test asserting the `Access-Control-Allow-Origin`
-header. **No wildcard** — auth lands next (DEC-005) and wildcard-plus-credentials is
-a real vulnerability. **The literal `"null"` origin is deliberately not allowlisted**;
-the packaged `file://` case is out of scope here and is recorded as a blocker in
+**Fix:** `CORSMiddleware` added to `backend/app/main.py` (commit `f6fa20b`), per
+`docs/tasks/task_T-002_renderer-scaffold-ci.md` § 3.4 — the amendment that permits
+exactly one backend change. `allow_origins` is exactly `["http://127.0.0.1:5173"]`,
+with `allow_methods`/`allow_headers` narrowed to what the renderer actually uses.
+**No wildcard** — auth lands next (DEC-005) and wildcard-plus-credentials is a real
+vulnerability, so the allowlist is tight while it is still free. **The literal
+`"null"` origin is deliberately not allowlisted**; the packaged `file://` case is out
+of scope here and is recorded as a blocker in
 `checklists/packaging-preflight.checklist.md`, which is where it will be read at the
-moment it matters. Flip this entry to Fixed only after the human confirms the
-renderer shows the **healthy** state against a running backend.
+moment it matters.
+
+Three tests in `backend/tests/test_health.py`: the header is emitted for the
+allowlisted origin, and **absent** for an unlisted origin and for `"null"`. The
+negative cases are the load-bearing ones — they are what fails if a future CORS
+complaint is "fixed" with `["*"]`.
+
+**Verified 2026-07-22, at runtime, in the real app** — the only check that means
+anything here (see TRAP-001). The Electron window, against a running backend, went
+from "Backend unreachable" (red) to **"Backend healthy — ok"** (green), with the two
+`blocked by CORS policy` console errors gone. Confirmed by the human. Backend
+`pytest`/`ruff`/`mypy` clean and CI green on `main` (run `29941029152`), but note
+that none of those gates could have caught the bug in the first place.
 
 **Trap:** TRAP-001.
-
-## Fixed
-
-*(none)*
 
 ## Traps
 
