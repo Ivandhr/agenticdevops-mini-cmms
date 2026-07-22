@@ -7,6 +7,12 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# Local databases — the dev SQLite file is never committed. CLAUDE.md's first
+# non-negotiable is that no agent touches a real or dev database; not having
+# one in the repo is what keeps that easy to honor.
+*.db
+*.sqlite3
+
 # Node
 node_modules/
 dist/

@@ -41,6 +41,51 @@ jobs:
       - name: Test (pytest)
         run: pytest
 
+  # The only Linux job, and only because service containers do not run on
+  # Windows runners. Without it, DEC-006's "migrations run on both engines"
+  # would be an assertion nothing executes: the Windows jobs above only ever
+  # see SQLite. Windows stays the dev-parity gate; this proves the Postgres leg.
+  migrations-postgres:
+    name: Migrations on Postgres (Python 3.12)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Throwaway credentials for a container that lives for one job.
+          POSTGRES_USER: cmmess
+          POSTGRES_PASSWORD: cmmess
+          POSTGRES_DB: cmmess
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CMMESS_DATABASE_URL: postgresql+psycopg://cmmess:cmmess@localhost:5432/cmmess
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      # Hard gate, both directions: a migration that cannot be reversed is a
+      # migration that cannot be rolled back in deployment.
+      - name: Migrate up (alembic upgrade head)
+        run: alembic upgrade head
+
+      - name: Migrate down (alembic downgrade base)
+        run: alembic downgrade base
+
   renderer:
     name: Renderer (Node 22)
     runs-on: windows-latest

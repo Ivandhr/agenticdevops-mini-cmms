@@ -8,9 +8,11 @@
 
 **Runtime: Node 22 (LTS) + Python 3.12.** These are the versions specified by the human lead as the local/target toolchain, and CI pins them exactly. **Keep CI matching the version the human actually runs** — the workflow that produced Rule 19 / DEC-003 was CI drifting off the correct runtime for several round-trips. When the local toolchain moves, this pin moves in the same change, and the reason is recorded here.
 
-**Runner OS: `windows-latest`, both jobs.** Same principle as the runtime pins — Windows is the confirmed ground truth for this project, so CI runs where the human runs. Windows is also where the platform-specific traps live (path separators, `.venv\Scripts\activate`, `localhost` resolving to `::1` while uvicorn binds IPv4); a Linux runner would pass straight over them. Recorded in T-002.
+**Runner OS: `windows-latest` for the backend and renderer jobs.** Same principle as the runtime pins — Windows is the confirmed ground truth for this project, so CI runs where the human runs. Windows is also where the platform-specific traps live (path separators, `.venv\Scripts\activate`, `localhost` resolving to `::1` while uvicorn binds IPv4); a Linux runner would pass straight over them. Recorded in T-002.
 
-Two toolchains run (the split-service topology, DEC-004): a Python job for the FastAPI backend and a Node job for the Electron/React renderer.
+**One exception: `migrations-postgres` runs on `ubuntu-latest`.** GitHub Actions **service containers do not run on Windows runners**, and a service container is the only way to get a real Postgres in front of the migration. Without this job, DEC-006's "every migration runs on both engines" would be an assertion nothing executes — the Windows jobs only ever see SQLite, which is exactly the half-test `data-model.md` § 1.4 warns about. Windows remains the dev-parity gate; this job exists solely to prove the Postgres leg. Recorded in T-003.
+
+Three jobs run: a Python job for the FastAPI backend and a Node job for the Electron/React renderer (the split-service topology, DEC-004), plus the Postgres migration job.
 
 | Step | Command | Fails the build? |
 |---|---|---|
@@ -22,6 +24,8 @@ Two toolchains run (the split-service topology, DEC-004): a Python job for the F
 | Lint — backend | `ruff check` | no — soft (see promotion) |
 | Test — backend | `pytest` | yes |
 | Test — renderer | `vitest run` | yes |
+| Migrate up — Postgres | `alembic upgrade head` | yes |
+| Migrate down — Postgres | `alembic downgrade base` | yes |
 | Generated-doc freshness | *(deferred — no generated docs yet)* | n/a |
 
 **Read-only by default.** The workflow requests read-only repo permissions and never requests a write token. See "the drift-detecting agent" below for why that matters.
@@ -36,6 +40,7 @@ Two toolchains run (the split-service topology, DEC-004): a Python job for the F
 - **Lint (`eslint` / `ruff`)** — style consistency and a class of common-bug patterns.
 - **Test — backend (`pytest`)** — backend domain-logic regressions; the renderer↔backend contract and server-side role enforcement (DEC-005) are covered here by integration tests against a running backend, not mocked into triviality (per `architecture-facts.md` § Testing boundaries).
 - **Test — renderer (`vitest`)** — pure renderer-logic regressions.
+- **Migrations on Postgres (`alembic upgrade head`, then `downgrade base`)** — the deployment engine actually accepts the schema, and the migration reverses. This is the guard against the whole class of green-in-dev, broken-in-deployment failures `data-model.md` § 1 enumerates: a native enum, a dialect-specific `op.execute()`, a SQLite-only assumption. `pytest` on the Windows job covers the SQLite half; "it ran on SQLite" is half a test. The **down** leg matters as much as the up leg — a migration that cannot be reversed cannot be rolled back in deployment.
 - **Generated-doc freshness** — will catch generated pages drifting from their source once any exist; deferred until then.
 
 No ratchets are defined yet. The first likely one is the contract-drift CI check flagged as an adopt-if in `docs/contract-sync.md` — fail a contract change that ships with no matching doc change. The ratchet pattern: a check that fails on the forbidden pattern everywhere except an allowlist that may only shrink, so new code can't add the pattern and the pre-existing cases trend to zero.
